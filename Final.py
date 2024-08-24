@@ -45,7 +45,7 @@ def receive_data():
 
     print("Đang chờ nhận dữ liệu từ ...")
     while True:
-        ser.write(str('11').encode())  # Gửi tín hiệu 'READY' tới STM32 để báo rằng Pi đã sẵn sàng
+        ser.write(str('3').encode())  # Gửi tín hiệu 'READY' tới STM32 để báo rằng Pi đã sẵn sàng
         ser.flush()
         if ser.in_waiting > 0:
             try:
@@ -66,7 +66,8 @@ def receive_data():
                 }
                 mycol.insert_one(mydict)
                 print("Hoàn thành!!!!!")
-                sleep(3)  # Chờ 3 giây để khớp với tần suất gửi dữ liệu của STM32
+                break
+                sleep(1)  # Chờ 3 giây để khớp với tần suất gửi dữ liệu của STM32
             except Exception as e:
                 print(f"Đã xảy ra lỗi khi nhận dữ liệu: {e}")
 
