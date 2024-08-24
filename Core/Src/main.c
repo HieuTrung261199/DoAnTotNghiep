@@ -131,24 +131,24 @@ int main(void)
       /* USER CODE END WHILE */
 
   	  HAL_ADC_Start(&hadc1);
-  	  HAL_UART_Receive_IT(&huart6, &Rx_data, 1);
+
   	  //Lm35
-  	  	  	  	  	  	  	  			HAL_ADC_PollForConversion(&hadc1, 100);
-  	  	  	  	  	  	  	  			  adc_value[0] = HAL_ADC_GetValue(&hadc1);
-  	  	  	  	  	  	  	  			  float voltage = adc_value[0] * 3.3 / 4096.0;
-  	  	  	  	  	  	  	  			  temp = voltage * 100.0;
+  	  HAL_ADC_PollForConversion(&hadc1, 100);
+  	  adc_value[0] = HAL_ADC_GetValue(&hadc1);
+  	  float voltage = adc_value[0] * 3.3 / 4096.0;
+  	  temp = voltage * 100.0;
 
-  	  	  	  	  	  	  	  		  //IR_LED
-  	  	  	  	  	  	  	  	  	  HAL_ADC_PollForConversion(&hadc1, 100);
-  	  	  	  	  	  	  			  adc_value[1] = HAL_ADC_GetValue(&hadc1);
+  	  //IR_LED
+  	  HAL_ADC_PollForConversion(&hadc1, 100);
+  	  adc_value[1] = HAL_ADC_GetValue(&hadc1);
 
-  	  	  	  	  	  	  			  //MQ-2
-  	  	  	  	  	  	  		      HAL_ADC_PollForConversion(&hadc1, 100);
-  	  	  	  	  	  	  			  adc_value[2] = HAL_ADC_GetValue(&hadc1);
+  	  //MQ-2
+  	  HAL_ADC_PollForConversion(&hadc1, 100);
+  	  adc_value[2] = HAL_ADC_GetValue(&hadc1);
 
-  	  	  	  	  	  	  			  //MQ-3
-  	  	  	  	  	  	  		      HAL_ADC_PollForConversion(&hadc1, 100);
-  	  	  	  	  	  	  			  adc_value[3] = HAL_ADC_GetValue(&hadc1);
+  	  //MQ-3
+  	  HAL_ADC_PollForConversion(&hadc1, 100);
+  	  adc_value[3] = HAL_ADC_GetValue(&hadc1);
 
                //------------------//
   	  	  	  	  if (temp >= 50) {
@@ -194,12 +194,10 @@ int main(void)
   								  		  GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 0);
   								  		  break;}}*/
   					}
-  					HAL_UART_Receive(&huart6, &buffer, 2, HAL_MAX_DELAY);
-  						  if (strcmp((char *)buffer, "11") == 0){
-  					       uart_printf("%d,%d,%d,%d",temp,(int)adc_value[1],(int)adc_value[2],(int)adc_value[3]);
 
-  	  	  						memset(buffer,0,sizeof(buffer));
-  	  	  					}HAL_Delay(3000);
+
+  					HAL_UART_Receive_IT(&huart6, &Rx_data, 1);
+  					HAL_Delay(3000);
       /* USER CODE BEGIN 3 */
     }
 
@@ -480,19 +478,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart->Instance==huart6.Instance)
 	{
-		//memset(&GPIOHandler4,0,sizeof(GPIOHandler4));
+		if ((strstr(Rx_data,"3") != NULL)){
+			uart_printf("%d,%d,%d,%d",temp,(int)adc_value[1],(int)adc_value[2],(int)adc_value[3]);
+			memset(buffer,0,sizeof(buffer));}
 
-		if (strstr(Rx_data,"1") != NULL)
-		    	{
-	  	  			GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);
-		    		memset(Rx_data,0,sizeof(Rx_data)); //clear memory recv_data = 0, set up 7 bytes
-		    		  	  	  	  	  	 	  	}
+		else if (strstr(Rx_data,"1") != NULL){
+	  	  	GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);
+		    memset(Rx_data,0,sizeof(Rx_data)); //clear memory recv_data = 0, set up 7 bytes
+		}
 		else{
 			GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 0);
 			memset(Rx_data,0,sizeof(Rx_data)); //clear memory recv_data = 0, set up 7 bytes
 		}
 	}
-
 }
 /* USER CODE END 4 */
 
