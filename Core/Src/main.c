@@ -30,7 +30,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-uint32_t adc_value[4];
+uint32_t adc_value[6];
 uint32_t temp;
 float hh;
 char Rx_data[10];
@@ -128,80 +128,52 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-      /* USER CODE END WHILE */
-
-  	  HAL_ADC_Start(&hadc1);
-
-  	  //Lm35
-  	  HAL_ADC_PollForConversion(&hadc1, 100);
-  	  adc_value[0] = HAL_ADC_GetValue(&hadc1);
-  	  float voltage = adc_value[0] * 3.3 / 4096.0;
-  	  temp = voltage * 100.0;
-
-  	  //IR_LED
-  	  HAL_ADC_PollForConversion(&hadc1, 100);
-  	  adc_value[1] = HAL_ADC_GetValue(&hadc1);
-
-  	  //MQ-2
-  	  HAL_ADC_PollForConversion(&hadc1, 100);
-  	  adc_value[2] = HAL_ADC_GetValue(&hadc1);
-
-  	  //MQ-3
-  	  HAL_ADC_PollForConversion(&hadc1, 100);
-  	  adc_value[3] = HAL_ADC_GetValue(&hadc1);
-
-               //------------------//
-  	  	  	  	  if (temp >= 50) {
-  	  	  	  	  	  	  	GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);
-
-  	  	  	  	  	  	  	/*while (1) {
-
-  	  	  	  	  	  	  					if( GPIO_ReadFromInputPin(GPIOC, GPIO_PIN_3) == 0) {
-  	  	  	  	  	  	  							 GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 0);
-  	  	  	  	  	  	  							 break;}}*/
-  	  	  	  	  }
-
-  	  	  	  //--------------------//
-
-  	  	  	  		  if (adc_value[1] <= 10) {
-  	  	  	  		GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);
-
-  	  	  	  /*while (1) {
-
-  	  	  	  		  	  	  	  	  	  if( GPIO_ReadFromInputPin(GPIOC, GPIO_PIN_3) == 0) {
-  	  	  	  		  	  	  	  	  		  	   GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 0);
-  	  	  	  		  	  	  	  	  		  	   break;}}*/
-  	  	  	  		  	  	  	  	  		  	   }
-  			//----------------//
-
-  					if (adc_value[2] >= 100) {
-
-  						GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);
-  							/*while (1) {
-
-  									  	  if( GPIO_ReadFromInputPin(GPIOC, GPIO_PIN_3) == 0) {
-  									  	  GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 0);
-  									  	  break;}}*/
-  					}
-  	  	  	//-------------//
-
-  					if (adc_value[3] >= 1500) {
-
-  						GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);
-  							/*while (1) {
-
-  								  		  if( GPIO_ReadFromInputPin(GPIOC, GPIO_PIN_3) == 0) {
-  								  		  GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 0);
-  								  		  break;}}*/
-  					}
+    /* USER CODE END WHILE */
+	  HAL_ADC_Start(&hadc1);
+	  //Smoke
+	  HAL_ADC_PollForConversion(&hadc1, 100);
+	  adc_value[0] = HAL_ADC_GetValue(&hadc1);
 
 
-  					HAL_UART_Receive_IT(&huart6, &Rx_data, 1);
-  					HAL_Delay(3000);
-      /* USER CODE BEGIN 3 */
+	  //IR_LED
+	  HAL_ADC_PollForConversion(&hadc1, 100);
+	  adc_value[1] = HAL_ADC_GetValue(&hadc1);
+
+	  //MQ-2
+	  HAL_ADC_PollForConversion(&hadc1, 100);
+	  adc_value[2] = HAL_ADC_GetValue(&hadc1);
+
+	  //MQ-3
+	  HAL_ADC_PollForConversion(&hadc1, 100);
+	  adc_value[3] = HAL_ADC_GetValue(&hadc1);
+
+	  //Lm35
+	  HAL_ADC_PollForConversion(&hadc1, 100);
+	  adc_value[4] = HAL_ADC_GetValue(&hadc1);
+	  float voltage = adc_value[4] * 3.3 / 4096.0;
+	  temp = voltage * 100.0;
+
+	  if (adc_value[0] == 4095){
+		GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);}
+
+	  if (adc_value[1] <= 10) {
+		GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);}
+
+	  if (adc_value[2] >= 250) {
+		GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);}
+
+	  if (adc_value[3] >= 500) {
+	    GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);}
+
+	  if (temp >= 50) {
+	  	GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);}
+
+	  HAL_UART_Receive_IT(&huart6, &Rx_data, 1);
+	  HAL_Delay(3000);
+    /* USER CODE BEGIN 3 */
     }
 
-    /* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 /**
@@ -278,7 +250,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 4;
+  hadc1.Init.NbrOfConversion = 5;
   hadc1.Init.DMAContinuousRequests = DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -318,6 +290,15 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = 4;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_5;
+  sConfig.Rank = 5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -428,37 +409,35 @@ void set_up(void){
 	//Open Clock
 
 	GPIO_Handle_t GPIOHandler2,GPIOHandler3,GPIOHandler4;
+	memset(&GPIOHandler2,0,sizeof(GPIOHandler2));
+	memset(&GPIOHandler3,0,sizeof(GPIOHandler3));
+	memset(&GPIOHandler4,0,sizeof(GPIOHandler4));
 
-		memset(&GPIOHandler2,0,sizeof(GPIOHandler2));
-		memset(&GPIOHandler3,0,sizeof(GPIOHandler3));
-		memset(&GPIOHandler4,0,sizeof(GPIOHandler4));
-			//PC1 for Relay
+	//PC1 for Relay
+	GPIOHandler2.pGPIOx = GPIOC;
+	GPIOHandler2.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_1;
+	GPIOHandler2.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_OUT;
+	GPIOHandler2.GPIO_PinConfig.GPIO_PinOPType = GPIO_OP_TYPE_PP;
+	GPIOHandler2.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_FAST;
+	GPIOHandler2.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_NO_PUPD;
+	GPIO_Init(&GPIOHandler2);
 
+	//PC2, PC3 for Button
+	GPIOHandler3.pGPIOx = GPIOC;
+	GPIOHandler3.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_2;
+	GPIOHandler3.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_IT_FT;
+	GPIOHandler3.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_FAST;
+	GPIOHandler3.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_PIN_PU;
+	GPIO_Init(&GPIOHandler3);
+	GPIO_IRQPriorityConfig(IRQ_NO_EXTI2,NVIC_IRQ_PRI15);
+	GPIO_IRQInterruptConfig(IRQ_NO_EXTI2,ENABLE);
 
-			GPIOHandler2.pGPIOx = GPIOC;
-			GPIOHandler2.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_1;
-			GPIOHandler2.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_OUT;
-			GPIOHandler2.GPIO_PinConfig.GPIO_PinOPType = GPIO_OP_TYPE_PP;
-			GPIOHandler2.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_FAST;
-			GPIOHandler2.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_NO_PUPD;
-			GPIO_Init(&GPIOHandler2);
-
-			//PC2, PC3 for Button
-			GPIOHandler3.pGPIOx = GPIOC;
-			GPIOHandler3.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_2;
-			GPIOHandler3.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_IT_FT;
-			GPIOHandler3.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_FAST;
-			GPIOHandler3.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_PIN_PU;
-			GPIO_Init(&GPIOHandler3);
-			GPIO_IRQPriorityConfig(IRQ_NO_EXTI2,NVIC_IRQ_PRI15);
-			GPIO_IRQInterruptConfig(IRQ_NO_EXTI2,ENABLE);
-
-			GPIOHandler4.pGPIOx = GPIOC;
-			GPIOHandler4.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_3;
-			GPIOHandler4.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_IN;
-			GPIOHandler4.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_FAST;
-			GPIOHandler4.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_PIN_PU;
-		    GPIO_Init(&GPIOHandler4);
+	GPIOHandler4.pGPIOx = GPIOC;
+	GPIOHandler4.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_3;
+	GPIOHandler4.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_IN;
+	GPIOHandler4.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_FAST;
+	GPIOHandler4.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_PIN_PU;
+	GPIO_Init(&GPIOHandler4);
 
 }
 
@@ -466,26 +445,29 @@ void EXTI2_IRQHandler(void)
 {
    /// delay(); //200ms . wait till button de-bouncing gets over
 	GPIO_ToggleOutputPin(GPIOC,GPIO_PIN_1);
-
 	GPIO_IRQHandling(GPIO_PIN_2); //clear the pending event from exti line
-	  	 while (1) {	uart_printf("%d,%d,%d,%d",temp,(int)adc_value[1],(int)adc_value[2],(int)adc_value[3]);
-	  	  	  	  	  	  if( GPIO_ReadFromInputPin(GPIOC, GPIO_PIN_3) == 0)
-	  	  	  	  	  	  {
-	  	  	  	  	  GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 0);
-	  	  	  	  	  	  break;}}
+	while (1){
+		uart_printf("%d,%d,%d,%d,%d",temp,(int)adc_value[1],(int)adc_value[2],(int)adc_value[3],(int)adc_value[0]);
+	  	if( GPIO_ReadFromInputPin(GPIOC, GPIO_PIN_3) == 0){
+	  		GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 0);
+	  		break;}}
 }
+
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart->Instance==huart6.Instance)
 	{
 		if ((strstr(Rx_data,"3") != NULL)){
-			uart_printf("%d,%d,%d,%d",temp,(int)adc_value[1],(int)adc_value[2],(int)adc_value[3]);
-			memset(buffer,0,sizeof(buffer));}
+			uart_printf("%d,%d,%d,%d,%d",temp,(int)adc_value[1],(int)adc_value[2],(int)adc_value[3],(int)adc_value[0]);
+			memset(buffer,0,sizeof(buffer));
+		}
 
 		else if (strstr(Rx_data,"1") != NULL){
 	  	  	GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 1);
 		    memset(Rx_data,0,sizeof(Rx_data)); //clear memory recv_data = 0, set up 7 bytes
 		}
+
 		else{
 			GPIO_WriteToOutputPin(GPIOC, GPIO_PIN_1, 0);
 			memset(Rx_data,0,sizeof(Rx_data)); //clear memory recv_data = 0, set up 7 bytes
@@ -508,7 +490,6 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
 
 #ifdef  USE_FULL_ASSERT
 /**
