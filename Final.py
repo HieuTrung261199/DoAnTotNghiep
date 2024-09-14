@@ -12,8 +12,8 @@ mydb = myclient["mydatabase"]
 mycol = mydb["SensorData"]
 
 # Hàm tạo tham số cho ThingSpeak
-def make_param_thingspeak(temp, IR, mq2, mq1):
-    params = parse.urlencode({'field1': temp, 'field2': IR, 'field3': mq2, 'field4': mq1}).encode()
+def make_param_thingspeak(temp, IR, mq2, mq1, smoke):
+    params = parse.urlencode({'field1': temp, 'field2': IR, 'field3': mq2, 'field4': mq1,'field5': smoke}).encode()
     return params
 
 # Hàm gửi dữ liệu tới ThingSpeak
@@ -50,10 +50,10 @@ def receive_data():
         if ser.in_waiting > 0:
             try:
                 received_data = ser.readline().decode().strip()
-                field1, field2, field3, field4 = map(int, received_data.split(','))
-                print(f"Field1={field1}, Field2={field2}, Field3={field3}, Field4={field4}")
+                field1, field2, field3, field4, field5 = map(int, received_data.split(','))
+                print(f"Field1={field1}, Field2={field2}, Field3={field3}, Field4={field4},Field5={field5}")
 
-                params_thingspeak = make_param_thingspeak(field1, field2, field3, field4)
+                params_thingspeak = make_param_thingspeak(field1, field2, field3, field4,field5)
                 thingspeak_post(params_thingspeak)
 
                 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -62,6 +62,7 @@ def receive_data():
                     "IR": field2,
                     "Mq-2": field3,
                     "Mq-135": field4,
+                    "Smoke": field5,
                     "timestamp": current_time
                 }
                 mycol.insert_one(mydict)
@@ -87,7 +88,7 @@ if __name__ == "__main__":
         try:
             data, data_c = thingspeak_get_data()
             try:
-                a_m = data[len(data) - 1]['field%s' % (5)]
+                a_m = data[len(data) - 1]['field%s' % (6)]
                 a_m = int(a_m)
             except:
                 a_m = None
