@@ -1,123 +1,158 @@
-import paho.mqtt.client as mqtt
-from datetime import datetime
-from time import sleep
-from urllib import request, parse
+"""
+This Code belongs to SME Dehraun. For any query write to schematicslab@gmail.com
+"""
+
+import BlynkLib
+from BlynkTimer import BlynkTimer
 import serial
-import json
-import pymongo
+from datetime import datetime
+import sqlite3
+from time import sleep
+import signal                   
+import sys
+import RPi.GPIO as GPIO
 
-# Kết nối tới MongoDB
-myclient = pymongo.MongoClient("mongodb+srv://Pi:1@dataforsensor.bidtxu2.mongodb.net/?retryWrites=true&w=majority&appName=DataForSensor")
-mydb = myclient["mydatabase"]
-mycol = mydb["SensorData"]
+conn = sqlite3.connect('iot_data.db')
+c = conn.cursor()
 
-# Hàm tạo tham số cho ThingSpeak
-def make_param_thingspeak(temp, IR, mq2, mq1, smoke):
-    params = parse.urlencode({'field1': temp, 'field2': IR, 'field3': mq2, 'field4': mq1,'field5': smoke}).encode()
-    return params
+#Create table sensor Data
+c.execute('''
+CREATE TABLE IF NOT EXISTS sensor_data (
+    GAS INT,
+    TEMP INT,
+    SMOKE INT,
+    TEMP_sys INT,
+    DEVICE TEXT,
+    DATE TEXT,
+    TIME TEXT
+)
+''')
 
-# Hàm gửi dữ liệu tới ThingSpeak
-def thingspeak_post(params):
-    api_key_write = "4OG7A73RK06C9ZJD"
-    req = request.Request('https://api.thingspeak.com/update', method="POST")
-    req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    req.add_header("X-THINGSPEAKAPIKEY", api_key_write)
-    r = request.urlopen(req, data=params)
-    response_data = r.read()
-    return response_data
+BUTTON_GPIO = 16
+LED_GPIO = 19
+BLYNK_AUTH_TOKEN = 'xnWepqN6sHxDLgZJLSOpvuTU9KMmMe1C'
+#BLYNK_AUTH_TOKEN_1 = 'IUd0LdtwsV2laOCcIMK672bx4KR74G0q'
 
-# Hàm nhận dữ liệu từ cổng serial
-def receive_data():
-    ser = serial.Serial(
-        port='/dev/serial0',
-        baudrate=115200,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
-        timeout=1
-    )
+# Initialize Blynk
+blynk = BlynkLib.Blynk(BLYNK_AUTH_TOKEN)
+# blynk1 = BlynkLib.Blynk(BLYNK_AUTH_TOKEN_1)
 
-    if ser.isOpen():
-        print("Cổng serial đã mở.")
-    else:
-        print("Mở cổng serial thất bại.")
-        return
+led_state = True
 
-    print("Đang chờ nhận dữ liệu từ ...")
-    while True:
-        ser.write(str('3').encode())  # Gửi tín hiệu 'READY' tới STM32 để báo rằng Pi đã sẵn sàng
+# Create BlynkTimer Instance
+timer = BlynkTimer()
+ser = serial.Serial(
+            port='/dev/ttyUSB0',
+            baudrate=9600,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS,
+            timeout=1
+        )
+
+def signal_handler(sig, frame):
+    GPIO.cleanup()
+    sys.exit(0)
+
+def button_callback(channel):
+    if GPIO.input(BUTTON_GPIO):  # Kiểm tra nút nhấn
+        global led_state
+        led_state = not led_state
+        if led_state == True:
+            ser.write(str('8').encode())
+            ser.flush()
+            print("ON")
+        else:
+            ser.write(str('9').encode())
+            ser.flush()
+            print("OFF")
+
+# Function to sync the data from virtual pins
+@blynk.on("connected")
+def blynk_connected():
+    print("Fire!!!!!!!!!!!!")
+    print(".......................................................")
+    print("................... By HIEU IOT ...................")
+    sleep(2)
+
+# LED control through V4 virtual pin
+@blynk.on("V4")
+def v0_write_handler(value):
+    if int(value[0]) != 0:
+        ser.write(str('8').encode())
         ser.flush()
-        if ser.in_waiting > 0:
-            try:
-                received_data = ser.readline().decode().strip()
-                field1, field2, field3, field4, field5 = map(int, received_data.split(','))
-                print(f"Field1={field1}, Field2={field2}, Field3={field3}, Field4={field4},Field5={field5}")
+        print("ON")
+    else:
+        ser.write(str('9').encode())
+        ser.flush()
+        print("OFF")
 
-                params_thingspeak = make_param_thingspeak(field1, field2, field3, field4,field5)
-                thingspeak_post(params_thingspeak)
+def receive_data():
+    try:
+        print("Đang chờ nhận dữ liệu từ ...")
+        while True:
+            now = datetime.now()
+            date = now.strftime("%Y-%m-%d")
+            time = now.strftime("%H:%M:%S")
+            ser.write(str('1').encode())  # Gửi tín hiệu 'READY' tới STM32 để báo rằng Pi đã sẵn sàng
+            ser.flush()
+            if ser.in_waiting > 0:
+                try:
+                    received_data = ser.readline().decode().strip()
+                    field1, field2 , field3, field4 = map(int, received_data.split(','))
+                    print("Node 1:")
+                    print(f"Gas={field1},Smoke ={field2} ,Temp_sys={field3}, Temp={field4}")
+                    c.execute("INSERT INTO sensor_data (GAS,  SMOKE, TEMP_sys, Temp, DATE, TIME) VALUES (?,?,?,?,?,?)", (field1, field2, field3, field4, date, time))
+                    conn.commit()
+                    # Gửi dữ liệu lên Blynk
+                    blynk.virtual_write(0, field1) #Gas
+                    blynk.virtual_write(2, field2) #Smoke
+                    blynk.virtual_write(3, field3) #Temp_sys
+                    blynk.virtual_write(1, field4) #Temp
+                    print("Values sent to New Blynk Server! 1111")
+                    sleep(1)
+                except ValueError:
+                    print("Error parsing received data.")
+            ser.write(str('2').encode())  # Gửi tín hiệu 'READY' tới STM32 để báo rằng Pi đã sẵn sàng
+            ser.flush()
+            if ser.in_waiting > 0:
+                try:
+                    received_data1 = ser.readline().decode().strip()
+                    field5, field6 , field7, field8 = map(int, received_data1.split(','))
+                    print("Node 2:")
+                    print(f"Gas={field5},Smoke ={field6} ,Temp_sys={field7}, Temp={field8}")
+                    #c.execute("INSERT INTO sensor_data (GAS,  SMOKE, TEMP_sys, Temp, DATE, TIME) VALUES (?,?,?,?,?,?)", (field1, field2, field3, field4, date, time))
+                    #conn.commit()
+                    # Gửi dữ liệu lên Blynk
+                    blynk.virtual_write(8, field5) #Gas
+                    blynk.virtual_write(6, field6) #Smoke
+                    blynk.virtual_write(7, field7) #Temp_sys
+                    blynk.virtual_write(5, field8) #Temp
+                    print("Values sent to New Blynk Server! 2222")
+                    sleep(1)
+                    break
+                except ValueError:
+                    print("Error parsing received data.")
 
-                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                mydict = {
-                    "Temp": field1,
-                    "IR": field2,
-                    "Mq-2": field3,
-                    "Mq-135": field4,
-                    "Smoke": field5,
-                    "timestamp": current_time
-                }
-                mycol.insert_one(mydict)
-                print("Hoàn thành!!!!!")
-                break
-                sleep(1)  # Chờ 3 giây để khớp với tần suất gửi dữ liệu của STM32
-            except Exception as e:
-                print(f"Đã xảy ra lỗi khi nhận dữ liệu: {e}")
+    except serial.SerialException as e:
+        print(f"Serial exception: {e}")
 
-# Hàm lấy dữ liệu từ ThingSpeak
-def thingspeak_get_data():
-    api_key_read = "OXSMDWPRN00P5A30"
-    req = request.Request("https://api.thingspeak.com/channels/2562559/feeds.json?api_key=4OG7A73RK06C9ZJD", method="GET")
-    r = request.urlopen(req)
-    response_data = r.read().decode()
-    response_data = json.loads(response_data)
-    data = response_data["feeds"]
-    data_c = response_data["channel"]
-    return data, data_c
+# Thiết lập timer để gọi hàm receive_data
+timer.set_interval(3, receive_data)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(BUTTON_GPIO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Chân nút nhấn
+GPIO.setup(LED_GPIO, GPIO.OUT)                               # Chân LED
+GPIO.output(LED_GPIO, GPIO.LOW)                              # Mặc định tắt LED
 
-if __name__ == "__main__":
+# Thiết lập ngắt GPIO với thời gian chống dội
+GPIO.add_event_detect(BUTTON_GPIO, GPIO.RISING, 
+                        callback=button_callback, bouncetime=200)
+
+# Bắt tín hiệu Ctrl+C để dọn dẹp GPIO
+signal.signal(signal.SIGINT, signal_handler)
+try:
     while True:
-        try:
-            data, data_c = thingspeak_get_data()
-            try:
-                a_m = data[len(data) - 1]['field%s' % (6)]
-                a_m = int(a_m)
-            except:
-                a_m = None
-            if a_m == 1:
-                ser = serial.Serial(
-                    port='/dev/serial0',
-                    baudrate=115200,
-                    parity=serial.PARITY_NONE,
-                    stopbits=serial.STOPBITS_ONE,
-                    bytesize=serial.EIGHTBITS,
-                    timeout=1000
-                )
-                ser.write(str('1').encode())
-                ser.flush()
-                print("BẬT")
-            elif a_m == 0:
-                ser = serial.Serial(
-                    port='/dev/serial0',
-                    baudrate=115200,
-                    parity=serial.PARITY_NONE,
-                    stopbits=serial.STOPBITS_ONE,
-                    bytesize=serial.EIGHTBITS,
-                    timeout=1000
-                )
-                ser.write(str('0').encode())
-                ser.flush()
-                print("TẮT")
-            receive_data()
-            sleep(3)  # Chờ 3 giây trước khi bắt đầu vòng lặp tiếp theo
-        except Exception as e:
-            print(f"Đã xảy ra lỗi: {e}")
-            sleep(5)
+        blynk.run()
+        timer.run()
+finally:
+    conn.close()  # Đảm bảo kết nối được đóng khi chương trình kết thúc
