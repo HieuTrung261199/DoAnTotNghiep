@@ -1,158 +1,148 @@
-"""
-This Code belongs to SME Dehraun. For any query write to schematicslab@gmail.com
-"""
-
 import BlynkLib
 from BlynkTimer import BlynkTimer
 import serial
 from datetime import datetime
 import sqlite3
 from time import sleep
-import signal                   
+import signal
 import sys
 import RPi.GPIO as GPIO
 
+# Kết nối SQLite
 conn = sqlite3.connect('iot_data.db')
 c = conn.cursor()
 
-#Create table sensor Data
+# Tạo bảng nếu chưa tồn tại
 c.execute('''
 CREATE TABLE IF NOT EXISTS sensor_data (
     GAS INT,
     TEMP INT,
     SMOKE INT,
     TEMP_sys INT,
-    DEVICE TEXT,
+    NODE_ID INT,
     DATE TEXT,
     TIME TEXT
 )
 ''')
 
+# Cấu hình GPIO
 BUTTON_GPIO = 16
 LED_GPIO = 19
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(BUTTON_GPIO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(LED_GPIO, GPIO.OUT)
+GPIO.output(LED_GPIO, GPIO.LOW)
+
+# Cấu hình Blynk
 BLYNK_AUTH_TOKEN = 'xnWepqN6sHxDLgZJLSOpvuTU9KMmMe1C'
-#BLYNK_AUTH_TOKEN_1 = 'IUd0LdtwsV2laOCcIMK672bx4KR74G0q'
-
-# Initialize Blynk
 blynk = BlynkLib.Blynk(BLYNK_AUTH_TOKEN)
-# blynk1 = BlynkLib.Blynk(BLYNK_AUTH_TOKEN_1)
+timer = BlynkTimer()
 
+# Cấu hình UART
+ser = serial.Serial(
+    port='/dev/ttyUSB0',
+    baudrate=9600,
+    parity=serial.PARITY_NONE,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.EIGHTBITS,
+    timeout=1
+)
+
+# Biến toàn cục
 led_state = True
 
-# Create BlynkTimer Instance
-timer = BlynkTimer()
-ser = serial.Serial(
-            port='/dev/ttyUSB0',
-            baudrate=9600,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-            timeout=1
-        )
-
+# Xử lý tín hiệu Ctrl+C
 def signal_handler(sig, frame):
     GPIO.cleanup()
+    conn.close()
     sys.exit(0)
 
-def button_callback(channel):
-    if GPIO.input(BUTTON_GPIO):  # Kiểm tra nút nhấn
-        global led_state
-        led_state = not led_state
-        if led_state == True:
-            ser.write(str('8').encode())
-            ser.flush()
-            print("ON")
-        else:
-            ser.write(str('9').encode())
-            ser.flush()
-            print("OFF")
+signal.signal(signal.SIGINT, signal_handler)
 
-# Function to sync the data from virtual pins
+# Hàm xử lý nút nhấn
+def button_callback(channel):
+    global led_state
+    led_state = not led_state
+    ser.write(b'8' if led_state else b'9')
+    ser.flush()
+    print("LED ON" if led_state else "LED OFF")
+
+GPIO.add_event_detect(BUTTON_GPIO, GPIO.RISING, callback=button_callback, bouncetime=200)
+
+# Hàm đồng bộ dữ liệu khi kết nối Blynk
 @blynk.on("connected")
 def blynk_connected():
-    print("Fire!!!!!!!!!!!!")
-    print(".......................................................")
-    print("................... By HIEU IOT ...................")
-    sleep(2)
+    print("Connected to Blynk server!")
 
-# LED control through V4 virtual pin
+# Điều khiển LED qua Blynk
 @blynk.on("V4")
-def v0_write_handler(value):
-    if int(value[0]) != 0:
-        ser.write(str('8').encode())
-        ser.flush()
-        print("ON")
+def v4_write_handler(value):
+    ser.write(b'8' if int(value[0]) else b'9')
+    ser.flush()
+    print("LED ON" if int(value[0]) else "LED OFF")
+
+# Hàm đọc dữ liệu từ từng node
+def read_node_data(node_id):
+    ser.write(str(node_id).encode())
+    ser.flush()
+    sleep(1)  # Đảm bảo STM32 có thời gian gửi dữ liệu
+    if ser.in_waiting > 0:
+        try:
+            raw_data = ser.readline().decode().strip()
+            print(f"Raw Node {node_id} Data: {raw_data}")
+            fields = list(map(int, raw_data.split(',')))
+            return fields  # Trả về danh sách dữ liệu
+        except ValueError:
+            print(f"Error parsing Node {node_id} data.")
     else:
-        ser.write(str('9').encode())
-        ser.flush()
-        print("OFF")
+        print(f"No data received from Node {node_id}.")
+    return None
 
+# Hàm xử lý và lưu dữ liệu
+def process_and_store_data(node_id, data):
+    if data:
+        now = datetime.now()
+        date = now.strftime("%Y-%m-%d")
+        time = now.strftime("%H:%M:%S")
+        gas, smoke, temp_sys, temp = data
+        print(f"Node {node_id} Data: Gas={gas}, Smoke={smoke}, Temp_sys={temp_sys}, Temp={temp}")
+        
+        # Lưu vào cơ sở dữ liệu
+        c.execute("INSERT INTO sensor_data (GAS, SMOKE, TEMP_sys, TEMP, NODE_ID, DATE, TIME) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                  (gas, smoke, temp_sys, temp, node_id, date, time))
+        conn.commit()
+        
+        # Gửi dữ liệu lên Blynk
+        if node_id == 1:
+            blynk.virtual_write(0, gas)       # Gas
+            blynk.virtual_write(2, smoke)    # Smoke
+            blynk.virtual_write(3, temp_sys) # Temp_sys
+            blynk.virtual_write(1, temp)     # Temp
+        elif node_id == 2:
+            blynk.virtual_write(8, gas)      # Gas
+            blynk.virtual_write(6, smoke)    # Smoke
+            blynk.virtual_write(7, temp_sys) # Temp_sys
+            blynk.virtual_write(5, temp)     # Temp
+
+# Hàm chính để nhận dữ liệu từ cả hai node
 def receive_data():
-    try:
-        print("Đang chờ nhận dữ liệu từ ...")
-        while True:
-            now = datetime.now()
-            date = now.strftime("%Y-%m-%d")
-            time = now.strftime("%H:%M:%S")
-            ser.write(str('1').encode())  # Gửi tín hiệu 'READY' tới STM32 để báo rằng Pi đã sẵn sàng
-            ser.flush()
-            if ser.in_waiting > 0:
-                try:
-                    received_data = ser.readline().decode().strip()
-                    field1, field2 , field3, field4 = map(int, received_data.split(','))
-                    print("Node 1:")
-                    print(f"Gas={field1},Smoke ={field2} ,Temp_sys={field3}, Temp={field4}")
-                    c.execute("INSERT INTO sensor_data (GAS,  SMOKE, TEMP_sys, Temp, DATE, TIME) VALUES (?,?,?,?,?,?)", (field1, field2, field3, field4, date, time))
-                    conn.commit()
-                    # Gửi dữ liệu lên Blynk
-                    blynk.virtual_write(0, field1) #Gas
-                    blynk.virtual_write(2, field2) #Smoke
-                    blynk.virtual_write(3, field3) #Temp_sys
-                    blynk.virtual_write(1, field4) #Temp
-                    print("Values sent to New Blynk Server! 1111")
-                    sleep(1)
-                except ValueError:
-                    print("Error parsing received data.")
-            ser.write(str('2').encode())  # Gửi tín hiệu 'READY' tới STM32 để báo rằng Pi đã sẵn sàng
-            ser.flush()
-            if ser.in_waiting > 0:
-                try:
-                    received_data1 = ser.readline().decode().strip()
-                    field5, field6 , field7, field8 = map(int, received_data1.split(','))
-                    print("Node 2:")
-                    print(f"Gas={field5},Smoke ={field6} ,Temp_sys={field7}, Temp={field8}")
-                    #c.execute("INSERT INTO sensor_data (GAS,  SMOKE, TEMP_sys, Temp, DATE, TIME) VALUES (?,?,?,?,?,?)", (field1, field2, field3, field4, date, time))
-                    #conn.commit()
-                    # Gửi dữ liệu lên Blynk
-                    blynk.virtual_write(8, field5) #Gas
-                    blynk.virtual_write(6, field6) #Smoke
-                    blynk.virtual_write(7, field7) #Temp_sys
-                    blynk.virtual_write(5, field8) #Temp
-                    print("Values sent to New Blynk Server! 2222")
-                    sleep(1)
-                    break
-                except ValueError:
-                    print("Error parsing received data.")
+    print("Receiving data from nodes...")
+    # Đọc dữ liệu từ Node 1
+    node_1_data = read_node_data(1)
+    process_and_store_data(1, node_1_data)
+    
+    # Đọc dữ liệu từ Node 2
+    node_2_data = read_node_data(2)
+    process_and_store_data(2, node_2_data)
 
-    except serial.SerialException as e:
-        print(f"Serial exception: {e}")
-
-# Thiết lập timer để gọi hàm receive_data
+# Thiết lập timer để gọi hàm nhận dữ liệu
 timer.set_interval(3, receive_data)
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(BUTTON_GPIO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Chân nút nhấn
-GPIO.setup(LED_GPIO, GPIO.OUT)                               # Chân LED
-GPIO.output(LED_GPIO, GPIO.LOW)                              # Mặc định tắt LED
 
-# Thiết lập ngắt GPIO với thời gian chống dội
-GPIO.add_event_detect(BUTTON_GPIO, GPIO.RISING, 
-                        callback=button_callback, bouncetime=200)
-
-# Bắt tín hiệu Ctrl+C để dọn dẹp GPIO
-signal.signal(signal.SIGINT, signal_handler)
+# Chạy chương trình chính
 try:
     while True:
         blynk.run()
         timer.run()
 finally:
-    conn.close()  # Đảm bảo kết nối được đóng khi chương trình kết thúc
+    conn.close()
+    GPIO.cleanup()
