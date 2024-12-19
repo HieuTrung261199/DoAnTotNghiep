@@ -45,6 +45,8 @@ uint32_t adc;
 int filter[3];
 float Tempurature;
 float heat;
+bool check = false;
+bool check_1 = false;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -138,38 +140,37 @@ void Process_ADC_Data(void) {
     filter[0] = conver(kalman_filter(adc_value[0]) - 450 );
     filter[1] = conver(kalman_filter(adc_value[1]) - 650);
     filter[2] = kalman_filter(adc_value[2]);
-    heat = adc_value[2] * 2.8 * 100 / 4096;
+    heat = adc_value[2] * 2.9 * 100 / 4096;
     temperature_oject = Read_Temperature();
 }
 
 void Control(void) {
-    bool condition1 = (int)filter[0] > 120 || (int)filter[1] > 120 || (int)heat > 50 || (int)temperature_oject > 90;
-    bool condition2 = (int)filter[0] > 140 || (int)filter[1] > 140 || (int)heat > 70 || (int)temperature_oject > 100;
+    bool condition1 = (int)filter[0] > 130 || (int)filter[1] > 130 || (int)heat > 50 || (int)temperature_oject > 80;
+    bool condition2 = (int)filter[0] > 180 || (int)filter[1] > 180 || (int)heat > 70 || (int)temperature_oject > 100;
 
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, condition1 ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, condition2 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+	if(check == false && check_1 == false ){
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, condition2 ? GPIO_PIN_SET : GPIO_PIN_RESET);}
 }
 
 void Process_UART_Command(void) {
     HAL_UART_Receive(&huart1, &Rx_data, 1, HAL_MAX_DELAY);
 
-    if (strstr(Rx_data, "3") != NULL) {
-        uart_printf("%d,%d,%d,%d", (int)filter[0], (int)filter[1], (int)heat, (int)temperature_oject);
-        memset(Rx_data, 0, sizeof(Rx_data));
+    if (strstr(Rx_data, "2") != NULL) {
+			uart_printf("%d,%d,%d,%d", (int)filter[0], (int)filter[1], (int)heat, (int)temperature_oject);
+			memset(Rx_data, 0, sizeof(Rx_data));
 	} else if (strstr(Rx_data, "8") != NULL) {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
-        memset(Rx_data, 0, sizeof(Rx_data));
-        while (1) {
-            HAL_UART_Receive(&huart1, Rx_data, 1, HAL_MAX_DELAY);
-            if (strstr(Rx_data, "9") != NULL) {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
-                memset(Rx_data, 0, sizeof(Rx_data));
-                break;
-            }
-        }
-    } else {
-        memset(Rx_data, 0, sizeof(Rx_data));
-    }
+			check_1 = !check_1;
+			if ((check_1 == true && check == false) || (check_1 == true && check == true)){
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+			memset(Rx_data, 0, sizeof(Rx_data));}
+	}  else if (strstr(Rx_data, "9") != NULL) {
+			check_1 = !check_1;
+			if ((check_1 == false && check == false) || (check_1 == false && check == true)){
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+			memset(Rx_data, 0, sizeof(Rx_data));}
+    } else memset(Rx_data, 0, sizeof(Rx_data));
+    
 }
 
 /* USER CODE END PV */
@@ -501,10 +502,10 @@ static void MX_GPIO_Init(void)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {	
-	//HAL_Delay(100);
+	check = !check;
 	if (GPIO_Pin == GPIO_PIN_6)
-	{
-		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+	{	if(check == true)HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5,1);
+		else HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5,0);
 	}
 }
 
