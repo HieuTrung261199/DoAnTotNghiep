@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Nhập thông tin</h1>
+    <form id="infoForm">
+        <label for="Gas">Gas</label>
+        <input type="text" id="Gas" name="Gas" required>
+
+        <label for="Smoker">Smoker</label>
+        <input type="text" id="Smoker" name="Smoker" required>
+
+        <label for="Fire">Fire</label>
+        <input type="text" id="Fire" name="Fire" required>
+
+        <button type="submit">Gửi</button>
+    </form>
+
+    <!-- Phần hiển thị kết quả trả về -->
+    <div id="result"></div>
+    
+    <script>
+        document.getElementById('infoForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Ngừng reload trang khi submit form
+            
+            const formData = {
+                Gas: document.getElementById('Gas').value,
+                Smoker: document.getElementById('Smoker').value,
+                Fire: document.getElementById('Fire').value
+            };
+
+            fetch('https://bae2-14-169-122-62.ngrok-free.app/api/data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hiển thị dữ liệu trả về từ API
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `<p>Kết quả dự đoán: ${data.prediction}</p>`;
+            })
+            .catch(error => {
+                alert('Đã có lỗi xảy ra!');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IUH</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-image: url('https://fast.com.vn/uploads/news/He-thong-thong-tin/IoT-ung-dung.png');
+            background-size: cover; /* Hình nền phủ kín màn hình */
+            background-position: center; /* Hiển thị trung tâm hình nền */
+            background-repeat: no-repeat; /* Không lặp lại */
+            color: #d3d3d3;
+            position: relative;
+        }
+        /* Lớp phủ nền */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Lớp phủ màu đen với độ trong suốt 50% */
+            z-index: -1;
+        }
+        .header {
+            background-color: rgba(26, 26, 26, 0.8); /* Nền tiêu đề trong suốt */
+            padding: 20px;
+            text-align: left; /* Căn chỉnh nội dung sang trái */
+            border-bottom: 1px solid #d3d3d3;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: calc(100vh - 61px); /* Chiều cao trừ phần tiêu đề */
+        }
+        .button {
+            border: 1px solid #d3d3d3;
+            background-color: #333;
+            color: #d3d3d3;
+            padding: 15px 30px;
+            margin: 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            text-decoration: none;
+        }
+        .button:hover {
+            background-color: #555;
+        }
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="https://rubee.com.vn/wp-content/uploads/2021/05/Logo-IUH.jpg" alt="IUH Logo">
+        <h1>IUH</h1>
+    </div>
+    <div class="content">
+        <div class="button-container">
+            <form action="{{ url_for('hieu') }}" method="get">
+                <button class="button" type="submit">AI Dự Đoán</button>
+            </form>
+            <form action="{{ url_for('search') }}" method="get">
+                <button class="button" type="submit">Theo Dõi Các Node</button>
+            </form>
+            <form action="{{ url_for('push') }}" method="get">
+                <button class="button" type="submit">Kích hoạt báo cháy</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
