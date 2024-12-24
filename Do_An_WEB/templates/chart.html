@@ -221,176 +221,174 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // Hàm chuyển đổi giữa các tab
-        function showNodeData(nodeId) {
-            const nodeTabs = document.querySelectorAll('.tab');
-            const nodeContents = document.querySelectorAll('.node-content');
-    
-            // Ẩn tất cả các node content
-            nodeContents.forEach(content => content.style.display = 'none');
-    
-            // Hiển thị node content tương ứng với nodeId
-            document.getElementById(`node${nodeId}-content`).style.display = 'block';
-    
-            // Cập nhật tab active
-            nodeTabs.forEach(tab => tab.classList.remove('active'));
-            nodeTabs[nodeId - 1].classList.add('active');
-    
-            // Fetch và vẽ biểu đồ cho tab hiện tại
-            fetchDataAndDrawCharts(nodeId);
-        }
-    
-        // Fetch dữ liệu từ API và vẽ biểu đồ
-        async function fetchDataAndDrawCharts(nodeId) {
-            try {
-                const response = await fetch(`/Data/node${nodeId}`);
-                if (!response.ok) {
-                    console.error(`Failed to fetch data for Node ${nodeId}:`, response.status);
-                    return;
-                }
-                const data = await response.json();
-                if (!charts[nodeId]) {
-                    drawCharts(nodeId, data); // Vẽ biểu đồ nếu chưa có biểu đồ
-                } else {
-                    updateChart(nodeId, data); // Cập nhật biểu đồ nếu đã có
-                }
-            } catch (error) {
-                console.error(`Error fetching data for Node ${nodeId}:`, error);
-            }
-        }
-    
-        // Vẽ các biểu đồ cho một node
-        function drawCharts(nodeId, data) {
-            if (!data || data.length === 0) {
-                console.warn(`No data available for Node ${nodeId}`);
+<script>
+    // Hàm chuyển đổi giữa các tab
+    function showNodeData(nodeId) {
+        const nodeTabs = document.querySelectorAll('.tab');
+        const nodeContents = document.querySelectorAll('.node-content');
+
+        // Ẩn tất cả các node content
+        nodeContents.forEach(content => content.style.display = 'none');
+
+        // Hiển thị node content tương ứng với nodeId
+        document.getElementById(`node${nodeId}-content`).style.display = 'block';
+
+        // Cập nhật tab active
+        nodeTabs.forEach(tab => tab.classList.remove('active'));
+        nodeTabs[nodeId - 1].classList.add('active');
+
+        // Fetch và vẽ biểu đồ cho tab hiện tại
+        fetchDataAndDrawCharts(nodeId);
+    }
+
+    // Fetch dữ liệu từ API và vẽ biểu đồ
+    async function fetchDataAndDrawCharts(nodeId) {
+        try {
+            const response = await fetch(`/Data/node${nodeId}`);
+            if (!response.ok) {
+                console.error(`Failed to fetch data for Node ${nodeId}:`, response.status);
                 return;
             }
-    
-            // Lấy 30 điểm dữ liệu gần nhất
-            const recentData = data.slice(-30);
-    
-            // Ánh xạ dữ liệu
-            const gasLevels = recentData.map(entry => entry.gas);
-            const smokeLevels = recentData.map(entry => entry.smoke);
-            const tempSysLevels = recentData.map(entry => entry.temp_sys);
-            const temperatures = recentData.map(entry => entry.temp);
-            const labels = Array.from({ length: recentData.length }, (_, i) => `Sample ${i + 1}`);
-    
-            // Tạo biểu đồ mới cho Node
-            charts[nodeId] = {
-                gas: createChart(`Node${nodeId}-Gas`, 'Gas Levels', labels, gasLevels, 'rgba(255, 99, 132, 1)', 'rgba(255, 99, 132, 0.2)'),
-                smoke: createChart(`Node${nodeId}-Smoke`, 'Smoke Levels', labels, smokeLevels, 'rgba(54, 162, 235, 1)', 'rgba(54, 162, 235, 0.2)'),
-                tempSys: createChart(`Node${nodeId}-TempSys`, 'System Temperature', labels, tempSysLevels, 'rgba(255, 206, 86, 1)', 'rgba(255, 206, 86, 0.2)'),
-                temperature: createChart(`Node${nodeId}-Temperature`, 'Temperature', labels, temperatures, 'rgba(75, 192, 192, 1)', 'rgba(75, 192, 192, 0.2)')
-            };
-        }
-    
-        // Cập nhật biểu đồ với dữ liệu mới
-        function updateChart(nodeId, data) {
-            if (!data || data.length === 0) {
-                console.warn(`No data available for Node ${nodeId}`);
-                return;
+            const data = await response.json();
+            if (!charts[nodeId]) {
+                drawCharts(nodeId, data); // Vẽ biểu đồ nếu chưa có biểu đồ
+            } else {
+                updateChart(nodeId, data); // Cập nhật biểu đồ nếu đã có
             }
-    
-            const recentData = data.slice(-30);
-            const gasLevels = recentData.map(entry => entry.gas);
-            const smokeLevels = recentData.map(entry => entry.smoke);
-            const tempSysLevels = recentData.map(entry => entry.temp_sys);
-            const temperatures = recentData.map(entry => entry.temp);
-            const labels = Array.from({ length: recentData.length }, (_, i) => `Sample ${i + 1}`);
-    
-            // Cập nhật dữ liệu cho các biểu đồ hiện tại
-            updateDataset(charts[nodeId].gas, labels, gasLevels);
-            updateDataset(charts[nodeId].smoke, labels, smokeLevels);
-            updateDataset(charts[nodeId].tempSys, labels, tempSysLevels);
-            updateDataset(charts[nodeId].temperature, labels, temperatures);
+        } catch (error) {
+            console.error(`Error fetching data for Node ${nodeId}:`, error);
         }
-    
-        // Hàm để cập nhật dữ liệu cho một dataset
-        function updateDataset(chart, labels, data) {
-            chart.data.labels = labels;
-            chart.data.datasets[0].data = data;
-            chart.update(); // Cập nhật lại biểu đồ
+    }
+
+    // Vẽ các biểu đồ cho một node
+    function drawCharts(nodeId, data) {
+        if (!data || data.length === 0) {
+            console.warn(`No data available for Node ${nodeId}`);
+            return;
         }
-    
-        // Hàm tạo biểu đồ
-        function createChart(canvasId, label, labels, data, borderColor, backgroundColor) {
-            const ctx = document.getElementById(canvasId)?.getContext('2d');
-            if (!ctx) {
-                console.error(`Canvas with ID ${canvasId} not found`);
-                return;
-            }
-    
-            return new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: label,
-                        data: data,
-                        borderColor: borderColor,
-                        backgroundColor: backgroundColor,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            ticks: {
-                                autoSkip: true,
-                                maxTicksLimit: 20, // Điều chỉnh số lượng nhãn trên trục X
-                            },
-                            title: {
-                                display: true,
-                                text: 'Samples'
-                            }
+
+        // Lấy 30 điểm dữ liệu gần nhất
+        const recentData = data.slice(-30);
+
+        // Ánh xạ dữ liệu
+        const gasLevels = recentData.map(entry => entry.gas);
+        const smokeLevels = recentData.map(entry => entry.smoke);
+        const tempSysLevels = recentData.map(entry => entry.temp_sys);
+        const temperatures = recentData.map(entry => entry.temp);
+        const labels = Array.from({ length: recentData.length }, (_, i) => `Sample ${i + 1}`);
+
+        // Tạo biểu đồ mới cho Node
+        charts[nodeId] = {
+            gas: createChart(`Node${nodeId}-Gas`, 'Gas Levels', labels, gasLevels, 'rgba(255, 99, 132, 1)', 'rgba(255, 99, 132, 0.2)'),
+            smoke: createChart(`Node${nodeId}-Smoke`, 'Smoke Levels', labels, smokeLevels, 'rgba(54, 162, 235, 1)', 'rgba(54, 162, 235, 0.2)'),
+            tempSys: createChart(`Node${nodeId}-TempSys`, 'System Temperature', labels, tempSysLevels, 'rgba(255, 206, 86, 1)', 'rgba(255, 206, 86, 0.2)'),
+            temperature: createChart(`Node${nodeId}-Temperature`, 'Temperature', labels, temperatures, 'rgba(75, 192, 192, 1)', 'rgba(75, 192, 192, 0.2)')
+        };
+    }
+
+    // Cập nhật biểu đồ với dữ liệu mới
+    function updateChart(nodeId, data) {
+        if (!data || data.length === 0) {
+            console.warn(`No data available for Node ${nodeId}`);
+            return;
+        }
+
+        const recentData = data.slice(-30);
+        const gasLevels = recentData.map(entry => entry.gas);
+        const smokeLevels = recentData.map(entry => entry.smoke);
+        const tempSysLevels = recentData.map(entry => entry.temp_sys);
+        const temperatures = recentData.map(entry => entry.temp);
+        const labels = Array.from({ length: recentData.length }, (_, i) => `Sample ${i + 1}`);
+
+        // Cập nhật dữ liệu cho các biểu đồ hiện tại
+        updateDataset(charts[nodeId].gas, labels, gasLevels);
+        updateDataset(charts[nodeId].smoke, labels, smokeLevels);
+        updateDataset(charts[nodeId].tempSys, labels, tempSysLevels);
+        updateDataset(charts[nodeId].temperature, labels, temperatures);
+    }
+
+    // Hàm để cập nhật dữ liệu cho một dataset
+    function updateDataset(chart, labels, data) {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = data;
+        chart.update(); // Cập nhật lại biểu đồ
+    }
+
+    // Hàm tạo biểu đồ
+    function createChart(canvasId, label, labels, data, borderColor, backgroundColor) {
+        const ctx = document.getElementById(canvasId)?.getContext('2d');
+        if (!ctx) {
+            console.error(`Canvas with ID ${canvasId} not found`);
+            return;
+        }
+
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    borderColor: borderColor,
+                    backgroundColor: backgroundColor,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        reverse: true, // Đảo ngược trục X để vẽ từ phải sang trái
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 20, // Điều chỉnh số lượng nhãn trên trục X
                         },
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Values'
-                            }
+                        title: {
+                            display: true,
+                            text: 'Samples'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Values'
                         }
                     }
                 }
-            });
-        }
-    
-        // Biến lưu trữ biểu đồ
-        let charts = {};
-    
-        // Hàm để cập nhật dữ liệu sau mỗi vài giây
-        function startDataUpdates(nodeId, interval) {
-            // Gọi dữ liệu và vẽ lại biểu đồ
-            fetchDataAndDrawCharts(nodeId);
-    
-            // Cập nhật dữ liệu sau mỗi interval (ms)
-            setInterval(() => {
-                fetchDataAndDrawCharts(nodeId);
-            }, interval);
-        }
-    
-        // Gán sự kiện cho các tab sau khi DOM đã được tải
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('tab1').addEventListener('click', () => showNodeData(1));
-            document.getElementById('tab2').addEventListener('click', () => showNodeData(2));
-            document.getElementById('tab3').addEventListener('click', () => showNodeData(3));
-    
-            // Load biểu đồ cho node đầu tiên khi tải trang
-            showNodeData(1);
-    
-            // Bắt đầu cập nhật dữ liệu liên tục cho Node 1
-            startDataUpdates(1, 5000); // Cập nhật mỗi 5 giây
-    
-            // Bắt đầu cập nhật dữ liệu liên tục cho Node 2 và Node 3 (nếu cần)
-            startDataUpdates(2, 5000);
-            startDataUpdates(3, 5000);
+            }
         });
-    </script>
-    
+    }
 
+    // Biến lưu trữ biểu đồ
+    let charts = {};
+
+    // Hàm để cập nhật dữ liệu sau mỗi vài giây
+    function startDataUpdates(nodeId, interval) {
+        // Gọi dữ liệu và vẽ lại biểu đồ
+        fetchDataAndDrawCharts(nodeId);
+
+        // Cập nhật dữ liệu sau mỗi interval (ms)
+        setInterval(() => {
+            fetchDataAndDrawCharts(nodeId);
+        }, interval);
+    }
+
+    // Gán sự kiện cho các tab sau khi DOM đã được tải
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('tab1').addEventListener('click', () => showNodeData(1));
+        document.getElementById('tab2').addEventListener('click', () => showNodeData(2));
+        document.getElementById('tab3').addEventListener('click', () => showNodeData(3));
+
+        // Load biểu đồ cho node đầu tiên khi tải trang
+        showNodeData(1);
+
+        // Bắt đầu cập nhật dữ liệu liên tục cho Node 1
+        startDataUpdates(1, 5000); // Cập nhật mỗi 5 giây
+
+        // Bắt đầu cập nhật dữ liệu liên tục cho Node 2 và Node 3 (nếu cần)
+        startDataUpdates(2, 5000);
+        startDataUpdates(3, 5000);
+    });
+</script>
 </body>
 </html>
