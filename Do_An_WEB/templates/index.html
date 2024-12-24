@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        /* Thiết lập nền cho toàn bộ trang */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* Phần bao bọc các phần tử */
+        .container {
+            text-align: center;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 600px;
+        }
+
+        /* Tiêu đề */
+        h1 {
+            color: #333;
+        }
+
+        /* Nút lấy dữ liệu */
+        #fetchDataButton {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #fetchDataButton:hover {
+            background-color: #45a049;
+        }
+
+        /* Phần hiển thị kết quả */
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            word-wrap: break-word;
+        }
+
+        /* Điều chỉnh hiển thị cho các thiết bị nhỏ */
+        @media (max-width: 600px) {
+            .container {
+                width: 100%;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Nhấn để lấy dữ liệu</h1>
+
+        <!-- Nút để lấy dữ liệu từ API -->
+        <button id="fetchDataButton">Lấy Dữ Liệu</button>
+
+        <!-- Phần hiển thị kết quả trả về -->
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Xử lý sự kiện nhấn nút "Lấy Dữ Liệu"
+        document.getElementById('fetchDataButton').addEventListener('click', function () {
+            // Gửi yêu cầu GET tới API để lấy dữ liệu
+            fetch('http://127.0.0.1:5000/api/data')
+                .then(response => response.json())
+                .then(data => {
+                    // Hiển thị dữ liệu trả về từ API
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = `<p>Dự đoán AI về khả năng cháy trong 1 phút tiếp theo: ${JSON.stringify(data.prediction)}</p>`;
+                })
+                .catch(error => {
+                    alert('Đã có lỗi xảy ra!');
+                });
+        });
+    </script>
+</body>
+
+</html>
