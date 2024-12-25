@@ -8,6 +8,32 @@ import signal
 import sys
 import RPi.GPIO as GPIO
 import threading
+import requests
+
+
+# Telegram Bot Token và Chat ID
+BOT_TOKEN = '7417109892:AAFxciSodWmXPLJYE2ZeMMPUIn2OUn5FaBU'
+CHAT_ID = '7547581341'  # Thay bằng Chat ID của bạn
+
+# URL API Telegram
+TELEGRAM_API_URL = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
+
+# Hàm gửi tin nhắn tới bot
+def send_message(message):
+    try:
+        payload = {
+            'chat_id': CHAT_ID,
+            'text': message
+        }
+        response = requests.post(TELEGRAM_API_URL, json=payload)
+        if response.status_code == 200:
+            print(f"Đã gửi tin nhắn: {message}")
+        else:
+            print(f"Lỗi khi gửi tin nhắn: {response.status_code}")
+    except Exception as e:
+        print(f"Lỗi khi kết nối API: {e}")
+
+
 
 def start_flask():
     app.run(host='0.0.0.0', port=5006, debug=True)
@@ -17,7 +43,7 @@ def start_flask():
 app = Flask(__name__)
 
 # Địa chỉ của Flask server trên Raspberry Pi
-FLASK_URL = 'http://192.168.1.3:5000/upload_data'  # URL máy tính
+FLASK_URL = 'http://192.168.1.10:5000/upload_data'  # URL máy tính
 
 # Đường dẫn tới cơ sở dữ liệu trên Raspberry Pi
 DB_PATH = 'iot_data.db'
@@ -104,19 +130,34 @@ def read_node_data(node_id):
     ser.flush()
     sleep(1)
     raw_data = None 
-    if node_id == 4:
-        node_id = 1
     if ser.in_waiting > 0:
         try:
             raw_data = ser.readline().decode().strip()
-            raw_data = raw_data[1:]  # Bỏ ký tự đầu tiên nếu có
-            print(f"Raw Node {node_id} Data: {raw_data}")
-            fields = list(map(int, raw_data.split(',')))
-            if len(fields) == 4:  # Chỉ chấp nhận dữ liệu có đúng 4 trường
-                return fields
+            raw1 = raw_data[0]
+            if raw1 == 'Q' or raw1 == 'W' or raw1 == 'E':
+                if raw1 == 'Q':
+                    send_message("Phòng của Node 1 đang xảy ra cháy!!!!")
+                elif raw1 == 'W':
+                    send_message("Phòng của Node 2 đang xảy ra cháy!!!!")
+                elif raw1 == 'E':
+                    send_message("Phòng của Node 3 đang xảy ra cháy!!!!")
+                print(f"Raw Node {node_id} Data: {raw_data}")
+                raw_data = raw_data[1:]  # Bỏ ký tự đầu tiên nếu có
+                fields = list(map(int, raw_data.split(',')))
+                if len(fields) == 4:  # Chỉ chấp nhận dữ liệu có đúng 4 trường
+                    return fields
+                else:
+                    print(f"Node {node_id}: Invalid data length ({len(fields)} fields). Expected 4.")
+                    return None
             else:
-                print(f"Node {node_id}: Invalid data length ({len(fields)} fields). Expected 4.")
-                return None
+                print(f"Raw Node {node_id} Data: {raw_data}")
+                raw_data = raw_data[1:]  # Bỏ ký tự đầu tiên nếu có
+                fields = list(map(int, raw_data.split(',')))
+                if len(fields) == 4:  # Chỉ chấp nhận dữ liệu có đúng 4 trường
+                    return fields
+                else:
+                    print(f"Node {node_id}: Invalid data length ({len(fields)} fields). Expected 4.")
+                    return None
         except ValueError:
             print(f"Node {node_id}: Error parsing data. Received raw data: {raw_data}")
     print(f"Node {node_id}: No data received.")
@@ -134,8 +175,6 @@ def receive_data_loop():
 
 # Xử lý và gửi dữ liệu từ node
 def process_and_send_data(node_id, data):
-    if node_id == 4:
-        node_id = 1
     if data:
         try:
             now = datetime.now()
@@ -166,7 +205,7 @@ def process_and_send_data(node_id, data):
 
 # Nhận và xử lý dữ liệu từ các node
 def receive_data():
-    node_ids = [4, 2, 3]  # Các node cần nhận dữ liệu
+    node_ids = [1, 2, 3]  # Các node cần nhận dữ liệu
     for node_id in node_ids:
         node_data = read_node_data(node_id)
         if node_data:
