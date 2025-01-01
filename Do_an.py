@@ -47,8 +47,7 @@ def start_flask():
 # Cấu hình cơ bản
 app = Flask(__name__)
 
-# Địa chỉ của Flask server trên Raspberry Pi
-FLASK_URL = 'http://192.168.1.3:5000/upload_data'  # URL máy tính
+FLASK_URL = 'http://192.168.1.10:5000/upload_data'  # URL máy tính
 
 # Đường dẫn tới cơ sở dữ liệu trên Raspberry Pi
 DB_PATH = 'iot_data.db'
@@ -111,8 +110,8 @@ def countdown(seconds):
 def button_callback(channel):
     global check1, led_state
     check1 = False
-    ser.write(str('5').encode())
-    ser.flush()
+    '''ser.write(str('5').encode())
+    ser.flush()'''
     print("Ready!!!!!!!!!")
     countdown(10)
     led_state = not led_state  # Đảo trạng thái LED
@@ -121,13 +120,13 @@ def button_callback(channel):
         ser.flush()
         GPIO.output(LED_GPIO, GPIO.HIGH)
         print("ON")
-        send_message("Báo cháy được kích hoạt")
+        send_message("Báo cháy được kích hoạt bằng nút nhấn")
     else:
         ser.write(str('9').encode())
         ser.flush()
         GPIO.output(LED_GPIO, GPIO.LOW)
         print("OFF")
-    sleep(5)
+        send_message("Báo cháy được tắt bằng nút nhấn")
     check1 = True
     print(check1)
 
@@ -182,7 +181,7 @@ def receive_data_loop():
         global check1
         if check1 == True:
             receive_data()  # Gọi hàm nhận dữ liệu từ các node
-            sleep(10)  # Đảm bảo không bị tắc nghẽn
+            sleep(5)  # Đảm bảo không bị tắc nghẽn
 
 # Xử lý và gửi dữ liệu từ node
 def process_and_send_data(node_id, data):
@@ -232,6 +231,7 @@ def receive_data():
         if node_data:
             process_and_send_data(node_id, node_data)
         sleep(5)
+        print("---------------------")
 
 # API để nhận tín hiệu từ phía ngoài
 @app.route('/receive_push', methods=['POST'])
@@ -242,25 +242,26 @@ def receive_push():
     print("Received data:", data)
     if data and data.get('push_signal') == 1:
         check1 = False
-        ser.write(str('5').encode())
-        ser.flush()
+        '''ser.write(str('5').encode())
+        ser.flush()'''
         countdown(5)
         GPIO.output(LED_GPIO, GPIO.HIGH)
         ser.write(b'8')
         ser.flush()
         print("LED ON")
-        send_message("Báo cháy được kích hoạt!!!!")
+        send_message("Báo cháy được kích hoạt bằng Web")
         check1 = True
         return jsonify({"status": "success", "message": "Dữ liệu đã được gửi."}), 200
     elif data and data.get('push_signal') == 0:
         check1 = False
-        ser.write(str('5').encode())
-        ser.flush()
+        '''ser.write(str('5').encode())
+        ser.flush()'''
         countdown(5)
         GPIO.output(LED_GPIO, GPIO.LOW)
         ser.write(b'9')
         ser.flush()
         print("LED OFF")
+        send_message("Báo cháy tắt kích hoạt bằng Web")
         check1 = True
         return jsonify({"status": "success", "message": "Tắt LED thành công."}), 200
     return jsonify({"status": "failed", "message": "Tín hiệu không hợp lệ."}), 400
