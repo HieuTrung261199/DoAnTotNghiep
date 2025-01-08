@@ -23,6 +23,9 @@ mycol = mydb["SensorData"]
 # URL API Telegram
 TELEGRAM_API_URL = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
 
+pause_event = threading.Event()
+pause_event.set()  # Ban đầu, mọi hoạt động được phép chạy
+
 # Hàm gửi tin nhắn tới bot
 def send_message(message):
     try:
@@ -47,7 +50,7 @@ def start_flask():
 # Cấu hình cơ bản
 app = Flask(__name__)
 
-FLASK_URL = 'http://192.168.1.10:5000/upload_data'  # URL máy tính
+FLASK_URL = 'http://192.168.1.11:5000/upload_data'  # URL máy tính
 
 # Đường dẫn tới cơ sở dữ liệu trên Raspberry Pi
 DB_PATH = 'iot_data.db'
@@ -80,6 +83,7 @@ GPIO.output(LED_GPIO, GPIO.LOW)
 # Biến toàn cục
 led_state = False
 check1 = True
+button_pressed = False
 
 # Khởi tạo serial cho việc giao tiếp UART
 ser = serial.Serial(
@@ -108,11 +112,10 @@ def countdown(seconds):
 
 # Xử lý nút nhấn
 def button_callback(channel):
-    global check1, led_state
-    check1 = False
-    '''ser.write(str('5').encode())
-    ser.flush()'''
-    print("Ready!!!!!!!!!")
+    global led_state
+    
+    print("Nút nhấn được nhấn! Tạm dừng các hoạt động khác.")
+    pause_event.clear()
     countdown(10)
     led_state = not led_state  # Đảo trạng thái LED
     if led_state:
@@ -127,8 +130,8 @@ def button_callback(channel):
         GPIO.output(LED_GPIO, GPIO.LOW)
         print("OFF")
         send_message("Báo cháy được tắt bằng nút nhấn")
-    check1 = True
-    print(check1)
+    print("Hoàn tất xử lý nút nhấn. Tiếp tục các hoạt động khác.")
+    pause_event.set()
 
 GPIO.add_event_detect(BUTTON_GPIO, GPIO.RISING, callback=button_callback, bouncetime=200)
 
@@ -142,7 +145,7 @@ def read_node_data(node_id):
         try:
             raw_data = ser.readline().decode().strip()
             raw1 = raw_data[0]
-            if raw1 == 'Q' or raw1 == 'W' or raw1 == 'E':
+            if raw1 in ['Q','w','E']:
                 if raw1 == 'Q':
                     send_message("Phòng của Node 1 đang xảy ra cháy!!!!")
                 elif raw1 == 'W':
@@ -178,10 +181,10 @@ def start_flask():
 # Hàm nhận dữ liệu
 def receive_data_loop():
     while True:
-        global check1
-        if check1 == True:
-            receive_data()  # Gọi hàm nhận dữ liệu từ các node
-            sleep(5)  # Đảm bảo không bị tắc nghẽn
+        #global check1
+        #if check1 == True:
+        receive_data()  # Gọi hàm nhận dữ liệu từ các node
+        sleep(5)  # Đảm bảo không bị tắc nghẽn
 
 # Xử lý và gửi dữ liệu từ node
 def process_and_send_data(node_id, data):
@@ -227,21 +230,21 @@ def process_and_send_data(node_id, data):
 def receive_data():
     node_ids = [1, 2, 3]  # Các node cần nhận dữ liệu
     for node_id in node_ids:
+        pause_event.wait()
         node_data = read_node_data(node_id)
         if node_data:
             process_and_send_data(node_id, node_data)
         sleep(5)
         print("---------------------")
-
 # API để nhận tín hiệu từ phía ngoài
 @app.route('/receive_push', methods=['POST'])
 def receive_push():
-    global check1
+    global pause_event  # Sử dụng biến sự kiện toàn cục
     data = request.json
-    print("Ready!!!!!!!!!")
+    print("Tạm dừng các hoạt động khác để xử lý yêu cầu từ API.")
+    pause_event.clear()
     print("Received data:", data)
     if data and data.get('push_signal') == 1:
-        check1 = False
         '''ser.write(str('5').encode())
         ser.flush()'''
         countdown(5)
@@ -250,10 +253,9 @@ def receive_push():
         ser.flush()
         print("LED ON")
         send_message("Báo cháy được kích hoạt bằng Web")
-        check1 = True
+        pause_event.set()
         return jsonify({"status": "success", "message": "Dữ liệu đã được gửi."}), 200
     elif data and data.get('push_signal') == 0:
-        check1 = False
         '''ser.write(str('5').encode())
         ser.flush()'''
         countdown(5)
@@ -261,9 +263,10 @@ def receive_push():
         ser.write(b'9')
         ser.flush()
         print("LED OFF")
-        send_message("Báo cháy tắt kích hoạt bằng Web")
-        check1 = True
-        return jsonify({"status": "success", "message": "Tắt LED thành công."}), 200
+        send_message("Báo cháy được tắt bằng Web")
+        pause_event.set()
+        return jsonify({"status": "success", "message": "Tắt báo cháy thành công."}), 200
+    pause_event.set()  # Cho phép tiếp tục hoạt động
     return jsonify({"status": "failed", "message": "Tín hiệu không hợp lệ."}), 400
 
 # Main loop để nhận dữ liệu liên tục
